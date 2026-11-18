@@ -1,6 +1,11 @@
-# Digital Truth Layer: AI and Blockchain Based Information Trust System
+# Digital Truth Layer: AI & Blockchain Information Trust System
 
-Digital Truth Layer is a production-grade, multi-modal information verification platform that combines cutting-edge AI forensics with immutable Ethereum blockchain technology. It establishes a tamper-proof chain of custody for digital media (Text, Images, and Video), combating misinformation and synthetic media tampering.
+**Digital Truth Layer** is a full-stack, multi-modal information verification and deepfake detection platform that combines **AI media forensics**, **Google Gemini 3.8 Flash authenticity analysis**, and an **immutable Ethereum smart contract ledger (`TruthRegistry.sol`)**. It detects misinformation, AI-generated imagery, spliced photos, and manipulated videos across **Text, Image, and Video**, sealing SHA-256 content fingerprints and trust scores on-chain with printable cryptographic verification certificates.
+
+### Key Capabilities
+- **Multi-Modal Truth Layer & Blockchain Ledger**: SHA-256 fingerprinting, live Google News RSS corroboration, Error Level Analysis (ELA) heatmaps, EXIF & AI watermark detection, in-image OCR, 10-keyframe video temporal consistency analysis, and immutable on-chain notarization via Hardhat (`TruthRegistry.sol`).
+- **Authenticity & Deepfake Analyzer (`/api/analyze`)**: Powered by the official Google Gen AI SDK (`google-genai`, `gemini-3.8-flash`) with strict structured JSON output (inline data for text/images and Gemini File API with automatic server cleanup for videos/large files), plus automatic local forensic fallback.
+- **Cyber-Trust Dashboard**: Next.js 14 dark-mode UI with drag-and-drop uploads, animated trust gauges, side-by-side ELA heatmap inspection, live blockchain audit ledger, and printable verification certificates.
 
 ---
 
@@ -47,23 +52,26 @@ Digital Truth Layer is a production-grade, multi-modal information verification 
 .
 ├── blockchain/                # Smart contracts & Hardhat node
 │   ├── contracts/             # TruthRegistry.sol
-│   ├── scripts/deploy.js      # Automated deployer & config exporter
+│   ├── scripts/
+│   │   ├── deploy.js          # Automated deployer & config exporter
+│   │   └── contract_cli.js    # Node ethers.js RPC bridge for backend
 │   ├── hardhat.config.js      # Port 8545, Chain ID 31337
 │   └── package.json
 │
 ├── backend/                   # FastAPI backend & AI services
-│   ├── main.py                # REST endpoints (/api/verify/*, /api/ledger, /api/health)
-│   ├── contract_config.json   # Auto-exported ABI, address, and deployer keys
-│   ├── requirements.txt       # Python dependencies
-│   └── services/              # Modular forensics & Web3 bridges
+│   ├── main.py                # REST endpoints (/api/verify/*, /api/analyze, /api/ledger, /api/health)
+│   ├── requirements.txt       # Python dependencies (FastAPI, OpenCV, Pillow, google-genai)
+│   └── services/              # Modular forensics & blockchain bridges
 │       ├── blockchain_service.py
+│       ├── gemini_analyzer.py # Gemini 3.8 Flash structured authenticity analyzer
 │       ├── text_ai.py
 │       ├── image_ai.py
+│       ├── ocr_extract.ps1
 │       └── video_ai.py
 │
 ├── frontend/                  # Next.js 14 cyber-trust dashboard
-│   ├── app/                   # App Router pages & styles (#0B0F19 obsidian theme)
-│   ├── components/            # Studio, Gauges, ELA Heatmap, Receipt, Ledger, Certificate
+│   ├── app/                   # App Router pages, /api/analyze proxy & styles (#0B0F19 obsidian theme)
+│   │   └── components/        # Studio, DeepfakeAnalyzer, Gauges, ELA Heatmap, Receipt, Ledger, Certificate
 │   └── public/samples/        # Realistic demo files for one-click testing
 │
 ├── demo_samples/              # Test cases generator and sample assets

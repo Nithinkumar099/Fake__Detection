@@ -1,6 +1,7 @@
 {
   "name": "digital-truth-layer-frontend",
   "version": "1.0.0",
+  "description": "Next.js 14 Cyber-Trust Dashboard for Digital Truth Layer — AI Forensics, Gemini 3.8 Flash Deepfake Analyzer, and Ethereum Blockchain Verification",
   "private": true,
   "scripts": {
     "dev": "next dev",
