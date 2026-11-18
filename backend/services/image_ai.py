@@ -42,25 +42,37 @@ OCR_SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "ocr_extract.ps1")
 
 def detect_ai_watermark(img_bgr: np.ndarray) -> bool:
     """
-    Detects AI generation watermarks (such as Google Gemini / SynthID 4-pointed sparkle
-    or corner badge) typically embedded in the lower-right corner of generated imagery.
+    Detects AI generation watermarks (such as Google Gemini / SynthID 4-pointed sparkle)
+    typically embedded in the lower-right corner of generated imagery.
+    Uses contour geometry (near-square bounding box + concave star solidity) to avoid
+    false positives on ordinary bright backgrounds or white documents.
     """
     h, w = img_bgr.shape[:2]
     if h < 100 or w < 100:
         return False
 
-    # Check bottom-right corner (last 80x80 px)
-    corner = img_bgr[max(0, h - 80):h, max(0, w - 80):w]
+    # Check bottom-right corner (last 90x90 px)
+    corner = img_bgr[max(0, h - 90):h, max(0, w - 90):w]
     gray = cv2.cvtColor(corner, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 185, 255, cv2.THRESH_BINARY)
+    # Ignore uniformly bright corners (e.g., white paper/sky)
+    if float(np.mean(gray)) > 235.0:
+        return False
+
+    _, thresh = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for c in contours:
         a = cv2.contourArea(c)
-        if 150 < a < 3500:
+        if 120 < a < 2500:
             bx, by, bw, bh = cv2.boundingRect(c)
-            if 20 <= bw <= 75 and 20 <= bh <= 75:
-                return True
+            # Isolated mark inside corner (not bleeding from crop top/left) with star-like concavity
+            if bx > 5 and by > 5 and 15 <= bw <= 75 and 15 <= bh <= 75:
+                aspect_ratio = bw / float(bh)
+                hull = cv2.convexHull(c)
+                hull_area = cv2.contourArea(hull)
+                solidity = a / hull_area if hull_area > 0 else 1.0
+                if 0.55 <= aspect_ratio <= 1.85 and 0.25 <= solidity <= 0.78:
+                    return True
     return False
 
 def extract_text_from_image(image_bytes: bytes) -> str:
@@ -121,7 +133,9 @@ def perform_ela_and_forensics(image_bytes: bytes) -> Dict[str, Any]:
     4. In-Image OCR and semantic analysis for AI-generated parodies, memes, and tabloid hoaxes.
     5. Visual line-art / comic illustration classification.
     """
-    original = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    raw_pil = Image.open(io.BytesIO(image_bytes))
+    raw_exif_obj = raw_pil.getexif()
+    original = raw_pil.convert("RGB")
     width, height = original.size
     np_orig_bgr = cv2.cvtColor(np.array(original), cv2.COLOR_RGB2BGR)
 
@@ -171,7 +185,7 @@ def perform_ela_and_forensics(image_bytes: bytes) -> Dict[str, Any]:
     exif_data = {}
     software_flagged = []
     try:
-        raw_exif = original.getexif()
+        raw_exif = raw_exif_obj
         if raw_exif:
             for tag_id, value in raw_exif.items():
                 tag_name = ExifTags.TAGS.get(tag_id, str(tag_id))
@@ -194,13 +208,15 @@ def perform_ela_and_forensics(image_bytes: bytes) -> Dict[str, Any]:
     for pat in TABLOID_PUBLISHERS:
         hits = re.findall(pat, ocr_lower, re.IGNORECASE)
         if hits:
-            tabloid_detected.extend(hits)
+            for h in hits:
+                tabloid_detected.append(h[0] if isinstance(h, tuple) else h)
 
     hoax_detected = []
     for pat in HOAX_HEADLINE_PATTERNS:
         hits = re.findall(pat, ocr_lower, re.IGNORECASE)
         if hits:
-            hoax_detected.extend(hits)
+            for h in hits:
+                hoax_detected.append(h[0] if isinstance(h, tuple) else h)
 
     parody_detected = []
     for pat in PARODY_AND_AI_PATTERNS:
@@ -257,7 +273,11 @@ def perform_ela_and_forensics(image_bytes: bytes) -> Dict[str, Any]:
         penalty += 80
         matched_claim = hoax_detected[0] if hoax_detected else "Tabloid Disinformation"
         findings.append(f"🚨 Tabloid & Supernatural Hoax Detected: Extracted in-image headlines assert '{matched_claim}'.")
-        findings.append("❌ Debunked Urban Legend: Confirmed fictional tabloid montage originating from 'Weekly World News'.")
+        if tabloid_detected:
+            pub_names = ", ".join(sorted(set(p.title() for p in tabloid_detected)))
+            findings.append(f"❌ Known Satire / Tabloid Source: Detected publisher signature ({pub_names}).")
+        else:
+            findings.append("❌ Debunked Urban Legend: Extracted headline matches known fabricated hoax claims.")
         findings.append(f"📰 In-Image OCR Transcript: \"{ocr_text[:120]}...\"")
 
     # C. Standard Photographic Forensics

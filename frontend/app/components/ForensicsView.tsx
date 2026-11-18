@@ -7,10 +7,7 @@ import {
   Video,
   ExternalLink,
   Info,
-  CheckCircle,
-  AlertTriangle,
   Flame,
-  Layers,
   Camera,
   Eye,
 } from "lucide-react";

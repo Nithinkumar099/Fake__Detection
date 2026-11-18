@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Sparkles,
@@ -12,10 +12,8 @@ import {
   Video,
   UploadCloud,
   AlertCircle,
-  CheckCircle2,
   RefreshCw,
   Cpu,
-  Layers,
   Info,
 } from "lucide-react";
 
@@ -34,24 +32,55 @@ export default function DeepfakeAnalyzer() {
   const [textContent, setTextContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [result, setResult] = useState<DeepfakeAnalysisResult | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   const handleFileChange = (file: File) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(file);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     setErrorMsg(null);
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, expected: "image" | "video") => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const valid =
+      expected === "image"
+        ? file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(file.name)
+        : file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name);
+    if (!valid) {
+      setErrorMsg(
+        expected === "image"
+          ? "Please drop a valid image file (JPG, PNG, WEBP)."
+          : "Please drop a valid video file (MP4, MOV, WEBM)."
+      );
+      return;
+    }
+    handleFileChange(file);
+  };
+
   const handleModeChange = (newMode: InputMode) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setMode(newMode);
     setSelectedFile(null);
     setPreviewUrl(null);
+    setIsDragging(false);
     setErrorMsg(null);
+    setResult(null);
   };
 
   const handleSubmit = async () => {
@@ -214,7 +243,17 @@ export default function DeepfakeAnalyzer() {
             />
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-800 bg-obsidian-950/60 p-6 text-center hover:border-emerald-500/50 hover:bg-obsidian-900/50 transition group"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => handleDrop(e, "image")}
+              className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition group ${
+                isDragging
+                  ? "border-emerald-400 bg-emerald-500/10"
+                  : "border-slate-800 bg-obsidian-950/60 hover:border-emerald-500/50 hover:bg-obsidian-900/50"
+              }`}
             >
               {previewUrl ? (
                 <div className="flex flex-col items-center space-y-2">
@@ -258,7 +297,17 @@ export default function DeepfakeAnalyzer() {
             />
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-800 bg-obsidian-950/60 p-6 text-center hover:border-indigo-500/50 hover:bg-obsidian-900/50 transition group"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => handleDrop(e, "video")}
+              className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition group ${
+                isDragging
+                  ? "border-indigo-400 bg-indigo-500/10"
+                  : "border-slate-800 bg-obsidian-950/60 hover:border-indigo-500/50 hover:bg-obsidian-900/50"
+              }`}
             >
               {selectedFile ? (
                 <div className="flex flex-col items-center space-y-2">

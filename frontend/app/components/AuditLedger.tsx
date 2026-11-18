@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import {
   Database,
   Search,
-  Filter,
   RefreshCw,
   Copy,
   Check,
@@ -15,6 +14,8 @@ import {
   ShieldAlert,
   HelpCircle,
 } from "lucide-react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 interface LedgerRecord {
   contentHash: string;
@@ -38,7 +39,7 @@ export default function AuditLedger({ lastUpdated }: AuditLedgerProps) {
   const fetchLedger = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://127.0.0.1:8000/api/ledger?limit=50");
+      const res = await fetch(`${API_BASE}/api/ledger?limit=50`);
       if (res.ok) {
         const data = await res.json();
         setRecords(data.records || []);

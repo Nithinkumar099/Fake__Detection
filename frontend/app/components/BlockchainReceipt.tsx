@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, ExternalLink, ShieldCheck, Database, Layers } from "lucide-react";
+import { Copy, Check, ShieldCheck, Database, Layers } from "lucide-react";
 
 interface BlockchainData {
   txHash?: string;

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, Cpu, Database, RefreshCw, Radio } from "lucide-react";
+import { ShieldCheck, Cpu, Database, RefreshCw } from "lucide-react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 interface HealthData {
   status: string;
@@ -24,7 +26,7 @@ export default function Navbar() {
   const fetchHealth = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://127.0.0.1:8000/api/health");
+      const res = await fetch(`${API_BASE}/api/health`);
       if (res.ok) {
         const data = await res.json();
         setHealth(data);

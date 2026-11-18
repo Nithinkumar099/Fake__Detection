@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   FileText,
   Image as ImageIcon,
   Video,
   UploadCloud,
-  Play,
   Sparkles,
-  CheckCircle,
-  AlertCircle,
-  FileCode,
-  ShieldCheck,
 } from "lucide-react";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export type MediaTab = "text" | "image" | "video";
 
@@ -45,12 +42,34 @@ export default function VerificationStudio({
   // Image Tab State
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Video Tab State
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  // Track pipeline animation timers so they can be cancelled on error/completion
+  const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearStepTimers = () => {
+    stepTimersRef.current.forEach((t) => clearTimeout(t));
+    stepTimersRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => {
+      clearStepTimers();
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+    };
+  }, [videoPreview]);
 
   // Re-audit toggle to bypass previous cache
   const [forceRecheck, setForceRecheck] = useState(false);
@@ -71,28 +90,33 @@ export default function VerificationStudio({
     }
 
     try {
+      clearStepTimers();
       onStartVerification(1);
       // Simulate pipeline progression
-      setTimeout(() => onStartVerification(2), 300);
-      setTimeout(() => onStartVerification(3), 600);
+      stepTimersRef.current.push(setTimeout(() => onStartVerification(2), 300));
+      stepTimersRef.current.push(setTimeout(() => onStartVerification(3), 600));
 
-      const res = await fetch("http://127.0.0.1:8000/api/verify/text", {
+      const res = await fetch(`${API_BASE}/api/verify/text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: textContent, recheck: forceRecheck }),
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || "Verification failed");
       }
 
+      clearStepTimers();
       onStartVerification(4);
       const data = await res.json();
-      setTimeout(() => {
-        onVerificationComplete(data);
-      }, 500);
+      stepTimersRef.current.push(
+        setTimeout(() => {
+          onVerificationComplete(data);
+        }, 400)
+      );
     } catch (e: any) {
+      clearStepTimers();
       onError(e.message || "Failed to connect to verification server.");
     }
   };
@@ -102,6 +126,18 @@ export default function VerificationStudio({
     setImageFile(file);
     const url = URL.createObjectURL(file);
     setImagePreview(url);
+  };
+
+  const handleImageDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingImage(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/") && !/\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
+      onError("Please drop a valid image file (JPG, PNG, WEBP).");
+      return;
+    }
+    handleImageFileChange(file);
   };
 
   const handleLoadSampleImage = async (type: "authentic" | "tampered") => {
@@ -148,9 +184,10 @@ export default function VerificationStudio({
     }
 
     try {
+      clearStepTimers();
       onStartVerification(1);
-      setTimeout(() => onStartVerification(2), 300);
-      setTimeout(() => onStartVerification(3), 700);
+      stepTimersRef.current.push(setTimeout(() => onStartVerification(2), 300));
+      stepTimersRef.current.push(setTimeout(() => onStartVerification(3), 700));
 
       const formData = new FormData();
       formData.append("file", imageFile);
@@ -158,31 +195,48 @@ export default function VerificationStudio({
         formData.append("recheck", "true");
       }
 
-      const res = await fetch("http://127.0.0.1:8000/api/verify/image", {
+      const res = await fetch(`${API_BASE}/api/verify/image`, {
         method: "POST",
         body: formData,
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || "Image verification failed");
       }
 
+      clearStepTimers();
       onStartVerification(4);
       const data = await res.json();
-      setTimeout(() => {
-        onVerificationComplete(data, imagePreview || undefined);
-      }, 500);
+      stepTimersRef.current.push(
+        setTimeout(() => {
+          onVerificationComplete(data, imagePreview || undefined);
+        }, 400)
+      );
     } catch (e: any) {
+      clearStepTimers();
       onError(e.message || "Failed to verify image.");
     }
   };
 
   // --- Handlers for Video ---
   const handleVideoFileChange = (file: File) => {
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
     setVideoFile(file);
     const url = URL.createObjectURL(file);
     setVideoPreview(url);
+  };
+
+  const handleVideoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingVideo(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("video/") && !/\.(mp4|mov|webm|avi|mkv)$/i.test(file.name)) {
+      onError("Please drop a valid video file (MP4, MOV, WEBM).");
+      return;
+    }
+    handleVideoFileChange(file);
   };
 
   const handleLoadSampleVideo = async () => {
@@ -205,14 +259,15 @@ export default function VerificationStudio({
 
   const handleVerifyVideo = async () => {
     if (!videoFile) {
-      onError("Please select a video file (.mp4, .mov) to verify.");
+      onError("Please select a video file (.mp4, .mov, .webm) to verify.");
       return;
     }
 
     try {
+      clearStepTimers();
       onStartVerification(1);
-      setTimeout(() => onStartVerification(2), 400);
-      setTimeout(() => onStartVerification(3), 900);
+      stepTimersRef.current.push(setTimeout(() => onStartVerification(2), 400));
+      stepTimersRef.current.push(setTimeout(() => onStartVerification(3), 900));
 
       const formData = new FormData();
       formData.append("file", videoFile);
@@ -220,22 +275,26 @@ export default function VerificationStudio({
         formData.append("recheck", "true");
       }
 
-      const res = await fetch("http://127.0.0.1:8000/api/verify/video", {
+      const res = await fetch(`${API_BASE}/api/verify/video`, {
         method: "POST",
         body: formData,
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || "Video verification failed");
       }
 
+      clearStepTimers();
       onStartVerification(4);
       const data = await res.json();
-      setTimeout(() => {
-        onVerificationComplete(data);
-      }, 500);
+      stepTimersRef.current.push(
+        setTimeout(() => {
+          onVerificationComplete(data);
+        }, 400)
+      );
     } catch (e: any) {
+      clearStepTimers();
       onError(e.message || "Failed to verify video.");
     }
   };
@@ -388,7 +447,17 @@ export default function VerificationStudio({
 
           <div
             onClick={() => imageInputRef.current?.click()}
-            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-800 bg-obsidian-950/60 p-6 text-center hover:border-emerald-500/50 hover:bg-obsidian-900/50 transition group"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDraggingImage(true);
+            }}
+            onDragLeave={() => setIsDraggingImage(false)}
+            onDrop={handleImageDrop}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition group ${
+              isDraggingImage
+                ? "border-emerald-400 bg-emerald-500/10"
+                : "border-slate-800 bg-obsidian-950/60 hover:border-emerald-500/50 hover:bg-obsidian-900/50"
+            }`}
           >
             {imagePreview ? (
               <div className="flex flex-col items-center space-y-2">
@@ -454,13 +523,23 @@ export default function VerificationStudio({
             type="file"
             ref={videoInputRef}
             onChange={(e) => e.target.files?.[0] && handleVideoFileChange(e.target.files[0])}
-            accept=".mp4,.mov,.avi"
+            accept=".mp4,.mov,.webm,.avi"
             className="hidden"
           />
 
           <div
             onClick={() => videoInputRef.current?.click()}
-            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-800 bg-obsidian-950/60 p-6 text-center hover:border-indigo-500/50 hover:bg-obsidian-900/50 transition group"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDraggingVideo(true);
+            }}
+            onDragLeave={() => setIsDraggingVideo(false)}
+            onDrop={handleVideoDrop}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition group ${
+              isDraggingVideo
+                ? "border-indigo-400 bg-indigo-500/10"
+                : "border-slate-800 bg-obsidian-950/60 hover:border-indigo-500/50 hover:bg-obsidian-900/50"
+            }`}
           >
             {videoFile ? (
               <div className="flex flex-col items-center space-y-2">

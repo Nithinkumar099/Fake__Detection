@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import VerificationStudio from "./components/VerificationStudio";
 import ProgressIndicator from "./components/ProgressIndicator";
@@ -24,6 +24,14 @@ export default function Home() {
   const [originalPreviewUrl, setOriginalPreviewUrl] = useState<string | undefined>(undefined);
   const [isCertificateOpen, setIsCertificateOpen] = useState<boolean>(false);
   const [lastLedgerUpdate, setLastLedgerUpdate] = useState<number>(Date.now());
+
+  useEffect(() => {
+    return () => {
+      if (originalPreviewUrl && originalPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(originalPreviewUrl);
+      }
+    };
+  }, [originalPreviewUrl]);
 
   const handleStartVerification = (step: number) => {
     setIsLoading(true);

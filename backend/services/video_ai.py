@@ -20,8 +20,9 @@ def analyze_video_forensics(video_bytes: bytes) -> Dict[str, Any]:
                 "trustScore": 50,
                 "verdict": "Unreadable Format",
                 "riskLevel": "Uncertain / Needs Review",
-                "findings": ["Could not decode video stream. Ensure file is standard MP4/MOV."],
-                "frameScores": []
+                "findings": ["Could not decode video stream. Ensure file is standard MP4/MOV/WEBM."],
+                "frameScores": [],
+                "metadata": {}
             }
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -49,7 +50,8 @@ def analyze_video_forensics(video_bytes: bytes) -> Dict[str, Any]:
                 "verdict": "Empty Video Stream",
                 "riskLevel": "Uncertain / Needs Review",
                 "findings": ["Zero valid frames extracted."],
-                "frameScores": []
+                "frameScores": [],
+                "metadata": {}
             }
 
         # Analyze individual keyframes and temporal transitions

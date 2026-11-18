@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, Award, Printer, X, CheckCircle, Database, Hash } from "lucide-react";
+import { Award, Printer, X } from "lucide-react";
 
 interface CertificateModalProps {
   isOpen: boolean;

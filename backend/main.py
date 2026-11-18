@@ -1,6 +1,6 @@
-import os
 import time
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -10,7 +10,6 @@ from services.text_ai import analyze_claims_and_evidence
 from services.image_ai import perform_ela_and_forensics
 from services.video_ai import analyze_video_forensics
 from services.gemini_analyzer import analyze_content_with_gemini
-from fastapi import Request
 
 app = FastAPI(
     title="Digital Truth Layer API",
@@ -18,11 +17,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for frontend interactions
+# Enable CORS for frontend interactions (credentials disabled so wildcard origin is spec-compliant)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -118,7 +117,8 @@ async def verify_image(
     Reconciles with TruthRegistry smart contract to ensure outdated cache scores never override truth.
     """
     allowed_types = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
-    if file.content_type not in allowed_types and not file.filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+    filename_lower = (file.filename or "").lower()
+    if file.content_type not in allowed_types and not filename_lower.endswith((".jpg", ".jpeg", ".png", ".webp")):
         raise HTTPException(status_code=400, detail="Invalid image file type. Please upload JPG, PNG, or WEBP.")
 
     image_bytes = await file.read()
@@ -126,10 +126,10 @@ async def verify_image(
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
     content_hash = compute_sha256(image_bytes)
-    ai_result = perform_ela_and_forensics(image_bytes)
+    ai_result = await run_in_threadpool(perform_ela_and_forensics, image_bytes)
     trust_score = ai_result["trustScore"]
 
-    existing = None if recheck else blockchain_service.check_existing_verification(content_hash)
+    existing = None if recheck else await run_in_threadpool(blockchain_service.check_existing_verification, content_hash)
 
     # If ledger record exists and matches accurate forensic score
     if existing and existing["trustScore"] == trust_score:
@@ -148,11 +148,11 @@ async def verify_image(
                 "Identical SHA-256 image fingerprint verified against TruthRegistry.sol smart contract.",
                 f"Consensus Block Timestamp: {time.ctime(existing['timestamp'])}."
             ] + ai_result["findings"],
-            "metadata": ai_result["metadata"]
+            "metadata": ai_result.get("metadata", {})
         }
 
     # If new, or if previous on-chain score was outdated/discrepant, update blockchain ledger
-    bc_receipt = blockchain_service.store_verification(content_hash, trust_score, "image")
+    bc_receipt = await run_in_threadpool(blockchain_service.store_verification, content_hash, trust_score, "image")
 
     return {
         "contentHash": content_hash,
@@ -166,7 +166,7 @@ async def verify_image(
         "blockchain": bc_receipt,
         "elaHeatmapBase64": ai_result["elaHeatmapBase64"],
         "findings": ai_result["findings"],
-        "metadata": ai_result["metadata"]
+        "metadata": ai_result.get("metadata", {})
     }
 
 @app.post("/api/verify/video")
@@ -178,19 +178,20 @@ async def verify_video(
     Computes SHA-256 fingerprint of uploaded video.
     Extracts 10 keyframes, runs temporal & ELA forensics, commits to blockchain ledger.
     """
-    allowed_exts = (".mp4", ".mov", ".avi", ".mkv")
-    if not file.filename.lower().endswith(allowed_exts):
-        raise HTTPException(status_code=400, detail="Invalid video format. Please upload MP4 or MOV.")
+    allowed_exts = (".mp4", ".mov", ".webm", ".avi", ".mkv")
+    filename_lower = (file.filename or "").lower()
+    if not filename_lower.endswith(allowed_exts):
+        raise HTTPException(status_code=400, detail="Invalid video format. Please upload MP4, MOV, or WEBM.")
 
     video_bytes = await file.read()
     if len(video_bytes) == 0:
         raise HTTPException(status_code=400, detail="Uploaded video file is empty.")
 
     content_hash = compute_sha256(video_bytes)
-    ai_result = analyze_video_forensics(video_bytes)
+    ai_result = await run_in_threadpool(analyze_video_forensics, video_bytes)
     trust_score = ai_result["trustScore"]
 
-    existing = None if recheck else blockchain_service.check_existing_verification(content_hash)
+    existing = None if recheck else await run_in_threadpool(blockchain_service.check_existing_verification, content_hash)
 
     if existing and existing["trustScore"] == trust_score:
         return {
@@ -211,7 +212,7 @@ async def verify_video(
             "metadata": ai_result.get("metadata", {})
         }
 
-    bc_receipt = blockchain_service.store_verification(content_hash, trust_score, "video")
+    bc_receipt = await run_in_threadpool(blockchain_service.store_verification, content_hash, trust_score, "video")
 
     return {
         "contentHash": content_hash,
@@ -225,7 +226,7 @@ async def verify_video(
         "blockchain": bc_receipt,
         "findings": ai_result["findings"],
         "frameScores": ai_result["frameScores"],
-        "metadata": ai_result["metadata"]
+        "metadata": ai_result.get("metadata", {})
     }
 
 @app.get("/api/ledger")
@@ -282,13 +283,14 @@ async def analyze_authenticity(request: Request) -> Dict[str, Any]:
             pass
 
     if file_bytes and len(file_bytes) > 0:
-        return analyze_content_with_gemini(
+        return await run_in_threadpool(
+            analyze_content_with_gemini,
             file_bytes=file_bytes,
             filename=filename,
             content_type=file_content_type
         )
     elif text:
-        return analyze_content_with_gemini(text=text)
+        return await run_in_threadpool(analyze_content_with_gemini, text=text)
     else:
         raise HTTPException(
             status_code=400,

@@ -16,28 +16,28 @@ Digital Truth Layer is a production-grade, multi-modal information verification 
                                           v
                       +-------------------+-------------------+
                       |      FastAPI Multi-Modal Backend      |
-                      |          (Port 8000 / Web3.py)        |
+                      |      (Port 8000 / Ethers Bridge)      |
                       +---------+-------------------+---------+
                                 |                   |
                +----------------+                   +----------------+
                v                                                     v
 +-------------------------------+                     +-------------------------------+
 |     Hardhat Ethereum Node     |                     |      Multi-Modal AI Engines   |
-|     (TruthRegistry.sol: 8545) |                     |   - Text NLP & Fact-Check     |
-|   - Content SHA-256 Hashes    |                     |   - Image ELA & EXIF          |
+|     (TruthRegistry.sol: 8545) |                     |   - Text NLP & News RSS       |
+|   - Content SHA-256 Hashes    |                     |   - Image ELA, EXIF & OCR     |
 |   - Consensus Timestamp       |                     |   - Video 10-Keyframe Temporal|
-+-------------------------------+                     +-------------------------------+
++-------------------------------+                     |   - Gemini 3.8 Deepfake API   |
+                                                      +-------------------------------+
 ```
 
 ### Verification Pipeline:
 1. **Cryptographic Fingerprint**: Submissions (raw text or media bytes) are hashed with **SHA-256**.
-2. **Blockchain Cache Query**: `TruthRegistry.sol` is queried via Web3.py.
-   - If the hash already exists on-chain, the system instantly returns the immutable score, block timestamp, and `verifiedFromLedger: true` (bypassing AI computation).
-3. **AI Forensics**: If the asset is new, specialized AI pipelines run:
-   - **Text**: Analyzes sensationalism patterns, capitalization anomalies, journalistic attribution, and queries live web evidence sources.
-   - **Image**: Executes **Error Level Analysis (ELA)** to detect compression disparities, builds a visual glowing heatmap, and parses EXIF metadata for editing software.
+2. **Multi-Modal AI Forensics**:
+   - **Text**: Analyzes sensationalism patterns, critical claims, journalistic attribution, and queries live Google News RSS feeds.
+   - **Image**: Executes **Error Level Analysis (ELA)** to detect compression disparities, builds a visual glowing heatmap, inspects EXIF metadata, checks AI corner watermarks, and runs in-image OCR.
    - **Video**: Samples 10 equidistant keyframes, evaluates temporal jump-cuts, frame-level ELA anomalies, and flicker inconsistency.
-4. **On-Chain Settlement**: The computed trust score and metadata are committed to `TruthRegistry.sol` in a signed transaction, producing a permanent `txHash` and block number.
+   - **Authenticity & Deepfake Analyzer (`/api/analyze`)**: Uses the official `google-genai` SDK (`gemini-3.8-flash`) with strict JSON schema output (inline data for text/small images, Gemini File API with automatic cleanup for videos/large files), with local forensic fallback when `GEMINI_API_KEY` is not set.
+3. **Blockchain Reconciliation & Settlement**: `TruthRegistry.sol` is queried via the Node.js `ethers` bridge (`blockchain/scripts/contract_cli.js`). Matching records return `verifiedFromLedger: true`; new or re-audited records are committed on-chain with a permanent `txHash` and block number.
 
 ---
 
@@ -107,8 +107,11 @@ Digital Truth Layer is a production-grade, multi-modal information verification 
 | `GET` | `/api/health` | Status of FastAPI, AI modules, and Hardhat node |
 | `POST` | `/api/verify/text` | Accepts JSON `{"text": "..."}` |
 | `POST` | `/api/verify/image` | Accepts multipart image (`.jpg`, `.png`, `.webp`) |
-| `POST` | `/api/verify/video` | Accepts multipart video (`.mp4`, `.mov`) |
+| `POST` | `/api/verify/video` | Accepts multipart video (`.mp4`, `.mov`, `.webm`) |
+| `POST` | `/api/analyze` | Authenticity & Deepfake Analyzer (Gemini 3.8 Flash; JSON text or multipart image/video) |
 | `GET` | `/api/ledger` | Returns all records stored on `TruthRegistry.sol` |
+
+> **Gemini API Setup:** Copy `.env.example` to `.env` and set `GEMINI_API_KEY` to enable live `gemini-3.8-flash` analysis.
 
 ---
 

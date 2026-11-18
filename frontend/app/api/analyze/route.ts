@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const BACKEND_URL = process.env.BACKEND_API_URL || "http://127.0.0.1:8000";
+
 export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get("content-type") || "";
 
     if (contentType.includes("application/json")) {
       const body = await req.json();
-      const res = await fetch("http://127.0.0.1:8000/api/analyze", {
+      const res = await fetch(`${BACKEND_URL}/api/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     // Multipart form data (file / text)
     const formData = await req.formData();
-    const res = await fetch("http://127.0.0.1:8000/api/analyze", {
+    const res = await fetch(`${BACKEND_URL}/api/analyze`, {
       method: "POST",
       body: formData,
     });

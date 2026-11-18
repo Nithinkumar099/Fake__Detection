@@ -17,12 +17,7 @@ foreach ($m in $methods) {
     }
 }
 
-function Await-Op($op, $type) {
-    global:asTask
-    $task = $asTask.MakeGenericMethod($type).Invoke($null, @($op))
-    return $task.GetAwaiter().GetResult()
-}
-
+$stream = $null
 try {
     $fullPath = [System.IO.Path]::GetFullPath($ImagePath)
     $fileOp = [Windows.Storage.StorageFile]::GetFileFromPathAsync($fullPath)
@@ -49,4 +44,8 @@ try {
     Write-Output $ocrResult.Text
 } catch {
     Write-Error $_
+} finally {
+    if ($null -ne $stream) {
+        $stream.Dispose()
+    }
 }
