@@ -1,0 +1,187 @@
+{
+  "contract_address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "rpc_url": "http://127.0.0.1:8545",
+  "chain_id": 31337,
+  "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "deployer_private_key": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "contentHashIndexed",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "contentHash",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "trustScore",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "mediaType",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "ContentVerified",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "getAllHashes",
+      "outputs": [
+        {
+          "internalType": "string[]",
+          "name": "",
+          "type": "string[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "limit",
+          "type": "uint256"
+        }
+      ],
+      "name": "getRecentRecords",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "contentHash",
+              "type": "string"
+            },
+            {
+              "internalType": "uint8",
+              "name": "trustScore",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "mediaType",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "exists",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct TruthRegistry.VerificationRecord[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getRecordCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_contentHash",
+          "type": "string"
+        }
+      ],
+      "name": "getVerification",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "string",
+              "name": "contentHash",
+              "type": "string"
+            },
+            {
+              "internalType": "uint8",
+              "name": "trustScore",
+              "type": "uint8"
+            },
+            {
+              "internalType": "string",
+              "name": "mediaType",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "exists",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct TruthRegistry.VerificationRecord",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_contentHash",
+          "type": "string"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_trustScore",
+          "type": "uint8"
+        },
+        {
+          "internalType": "string",
+          "name": "_mediaType",
+          "type": "string"
+        }
+      ],
+      "name": "storeVerification",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "digital-truth-layer-blockchain",
+  "version": "1.0.0",
+  "description": "Hardhat blockchain layer for Digital Truth Layer",
+  "scripts": {
+    "node": "hardhat node",
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.15"
+  }
+}
